@@ -220,9 +220,7 @@ public class DownloadProductRepository extends NonMappedRepository<DownloadProdu
                     return "WHERE dh.site_id = ? AND dh.satellite_id = ? ORDER BY dh.product_date";
                 } else {
                     return String.format("WHERE dh.site_id = ? AND dh.satellite_id = ? AND dh.status_id IN (%s) ORDER BY dh.product_date",
-                                         String.join(",", Arrays.stream(statuses)
-                                                                .map(s -> String.valueOf(s.value()))
-                                                                .collect(Collectors.toList())));
+                                         Arrays.stream(statuses).map(s -> String.valueOf(s.value())).collect(Collectors.joining(",")));
                 }
             }
 
@@ -230,6 +228,29 @@ public class DownloadProductRepository extends NonMappedRepository<DownloadProdu
             protected void mapParameters(PreparedStatement statement) throws SQLException {
                 statement.setShort(1, (short) siteId);
                 statement.setShort(2, (short) satelliteId);
+            }
+        }.list();
+    }
+
+    List<DownloadProduct> findByStatusAndReason(int siteId, int satelliteId, Status status, String reasonFilter) {
+        if (status == null) {
+            throw new IllegalArgumentException("[status] cannot be null");
+        }
+        if (reasonFilter == null || reasonFilter.isEmpty()) {
+            throw new IllegalArgumentException("[reasonFilter] cannot be null or empty");
+        }
+        return new DownloadProductTemplate() {
+            @Override
+            protected String conditionsSQL() {
+                return "WHERE dh.site_id = ? AND dh.satellite_id = ? AND dh.status_id = ? AND dh.status_reason LIKE ? ORDER BY dh.product_date";
+            }
+
+            @Override
+            protected void mapParameters(PreparedStatement statement) throws SQLException {
+                statement.setShort(1, (short) siteId);
+                statement.setShort(2, (short) satelliteId);
+                statement.setShort(3, status.value());
+                statement.setString(4, "%" + reasonFilter + "%");
             }
         }.list();
     }

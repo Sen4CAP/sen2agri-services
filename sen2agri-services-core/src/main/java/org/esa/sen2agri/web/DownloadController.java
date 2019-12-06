@@ -30,13 +30,15 @@ import ro.cs.tao.datasource.DataQuery;
 import ro.cs.tao.datasource.DataSourceComponent;
 import ro.cs.tao.datasource.param.CommonParameterNames;
 import ro.cs.tao.datasource.param.QueryParameter;
+import ro.cs.tao.eodata.EOProduct;
 import ro.cs.tao.eodata.Polygon2D;
 import ro.cs.tao.services.commons.ControllerBase;
-import ro.cs.tao.services.commons.ResponseStatus;
 import ro.cs.tao.services.commons.ServiceResponse;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -97,11 +99,17 @@ public class DownloadController extends ControllerBase {
                                                    @RequestParam(name = "user", required = false) String user,
                                                    @RequestParam(name = "password", required = false) String password) {
         try {
-            DataSourceComponent component = new DataSourceComponent(satellite, dataSource);
+            final String platformName = satellite.contains("-") ? satellite : satellite.substring(0, satellite.length() - 1) + "-" + satellite.substring(satellite.length() - 1);
+            final String dsSensor = satellite.contains("-") ? satellite.replace("-", "") : satellite;
+            DataSourceComponent component = new DataSourceComponent(dsSensor, dataSource);
+            component.setUserCredentials(user, password);
             DataQuery query = component.createQuery();
-            query.addParameter(CommonParameterNames.PLATFORM, satellite);
-            final Date dateFrom = Date.from(LocalDateTime.of(2019, 10, 1, 0, 0, 0, 0).atZone(ZoneId.systemDefault()).toInstant());
-            final Date dateTo = Date.from(LocalDateTime.of(2019, 10, 10, 0, 0, 0, 0).atZone(ZoneId.systemDefault()).toInstant());
+            query.addParameter(CommonParameterNames.PLATFORM, platformName);
+            final LocalDate testDate = LocalDate.now().minus(2, ChronoUnit.MONTHS);
+            final Date dateFrom = Date.from(LocalDateTime.of(testDate.getYear(), testDate.getMonth(), 1, 0, 0, 0, 0)
+                                      .atZone(ZoneId.systemDefault()).toInstant());
+            final Date dateTo = Date.from(LocalDateTime.of(testDate.getYear(), testDate.getMonth(), 15, 0, 0, 0, 0)
+                                      .atZone(ZoneId.systemDefault()).toInstant());
             QueryParameter<Date> dateParam = query.createParameter(CommonParameterNames.START_DATE, Date.class);
             if ("Scientific Data Hub".equals(dataSource)) {
                 dateParam.setMinValue(dateFrom);
@@ -125,8 +133,8 @@ public class DownloadController extends ControllerBase {
                                                          "22.8042573604346 44.795645304033826," +
                                                          "22.8042573604346 43.8379609098684))"));
             query.setMaxResults(1);
-            query.execute();
-            return prepareResult("OK", ResponseStatus.SUCCEEDED);
+            final List<EOProduct> result = query.execute();
+            return prepareResult(result.size(), "OK");
         } catch (Exception ex) {
             return handleException(ex);
         }

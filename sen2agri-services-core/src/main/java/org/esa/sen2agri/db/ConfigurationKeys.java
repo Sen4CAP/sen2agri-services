@@ -26,6 +26,7 @@ public final class ConfigurationKeys {
     public static final String DOWNLOADER_SENSOR_ENABLED = "downloader.%s.enabled";
     public static final String DOWNLOADER_SENSOR_FORCE_START = "downloader.%s.forcestart";
     public static final String DOWNLOADER_START_OFFSET = "downloader.start.offset";
+    public static final String DOWNLOADER_USE_ESA_L2A = "downloader.use.esa.l2a";
     public static final String SKIP_EXISTING_PRODUCTS = "downloader.skip.existing";
     public static final String SCHEDULED_LOOKUP_ENABLED = "scheduled.lookup.enabled";
     public static final String SCHEDULED_RETRY_ENABLED = "scheduled.retry.enabled";

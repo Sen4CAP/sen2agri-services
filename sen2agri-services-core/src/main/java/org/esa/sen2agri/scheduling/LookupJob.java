@@ -177,6 +177,10 @@ public class LookupJob extends DownloadJob {
         }
     }
 
+    private boolean useESAL2A(Site site) {
+        return Boolean.parseBoolean(Config.getSetting(site.getId(), ConfigurationKeys.DOWNLOADER_USE_ESA_L2A, "false"));
+    }
+
     protected LocalDateTime getStartDate(Satellite satellite, Site site, List<Season> seasons) {
         LocalDateTime minStartDate = seasons.get(0).getStartDate().atStartOfDay();
         int downloaderStartOffset = Config.getAsInteger(ConfigurationKeys.DOWNLOADER_START_OFFSET, 0);
@@ -224,6 +228,9 @@ public class LookupJob extends DownloadJob {
                            start.format(DateTimeFormatter.ofPattern(Constants.FULL_DATE_FORMAT)),
                            end.format(DateTimeFormatter.ofPattern(Constants.FULL_DATE_FORMAT)) });
         params.put(CommonParameterNames.FOOTPRINT, Polygon2D.fromWKT(site.getExtent()));
+        params.put(CommonParameterNames.PRODUCT_TYPE,
+                   satellite == Satellite.Sentinel2 && useESAL2A(site) ?
+                           Constants.S2L2A_PRODUCT_TYPE : Constants.S2L1C_PRODUCT_TYPE);
         if (tiles != null && tiles.size() > 0) {
             int initialSize = tiles.size();
             logger.finest(String.format("Validating %s tile filter for site %s", satellite.friendlyName(), site.getShortName()));
@@ -241,16 +248,29 @@ public class LookupJob extends DownloadJob {
             params.put(CommonParameterNames.TILE, tileList);
         }
         final List<Parameter> specificParameters = queryConfiguration.getSpecificParameters();
+        boolean hasChanged = false;
         if (specificParameters != null) {
-            specificParameters.forEach(p -> {
+            for (Parameter p : specificParameters) {
                 try {
-                    params.put(p.getName(), p.typedValue());
+                    final Object newValue = params.get(p.getName());
+                    if (newValue != null && !p.typedValue().equals(newValue)) {
+                        logger.info(String.format("Parameter %s was set by another setting. Data source [%s-%s] will be updated with the new value ['%s'->'%s']",
+                                                  p.getName(), queryConfiguration.getDataSourceName(), queryConfiguration.getDataSourceName(),
+                                                  p.getValue(), newValue));
+                        p.setValue(String.valueOf(newValue));
+                        hasChanged = true;
+                    } else {
+                        params.put(p.getName(), p.typedValue());
+                    }
                 } catch (Exception e) {
                     logger.warning(String.format(MESSAGE, site.getName(), satellite.name(),
                                                  String.format("Incorrect typed value for parameter [%s] : expected '%s', found '%s'",
                                                                p.getName(), p.getType(), p.getValue())));
                 }
-            });
+            }
+            if (hasChanged) {
+                persistenceManager.save(queryConfiguration);
+            }
         }
         query.setValues(params);
         try {

@@ -66,6 +66,13 @@ public class StepRepository extends NonMappedRepository<Step> {
     public int saveLog(String stepName, int taskId, String nodeName, long duration, String log, String error) {
         DataSource dataSource = persistenceManager.getDataSource();
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        // it may happen that the strings contain 0x00 bytes (ASCII NUL), which are not supported by Postgres text columns
+        if (log != null && !log.isEmpty()) {
+            log = log.replaceAll("\u0000", "");
+        }
+        if (error != null && !error.isEmpty()) {
+            error = error.replaceAll("\u0000", "");
+        }
         return jdbcTemplate.update("INSERT INTO step_resource_log (step_name, task_id, node_name, entry_timestamp, duration_ms, stdout_text, stderr_text) " +
                                            "VALUES (?,?,?,?,?,?,?)",
                                    stepName, taskId, nodeName, Timestamp.valueOf(LocalDateTime.now()), duration, log, error);

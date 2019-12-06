@@ -18,13 +18,14 @@ package org.esa.sen2agri.services;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.esa.sen2agri.commons.CheckSumManager;
 import org.esa.sen2agri.commons.Config;
+import org.esa.sen2agri.commons.Constants;
 import org.esa.sen2agri.db.PersistenceManager;
 import org.esa.sen2agri.entities.DownloadProduct;
+import org.esa.sen2agri.entities.HighLevelProduct;
 import org.esa.sen2agri.entities.converters.ProductConverter;
-import org.esa.sen2agri.entities.enums.OrbitType;
-import org.esa.sen2agri.entities.enums.Satellite;
-import org.esa.sen2agri.entities.enums.Status;
+import org.esa.sen2agri.entities.enums.*;
 import ro.cs.tao.datasource.ProductStatusListener;
+import ro.cs.tao.datasource.param.CommonParameterNames;
 import ro.cs.tao.eodata.EOProduct;
 import ro.cs.tao.eodata.metadata.MetadataInspector;
 import ro.cs.tao.products.sentinels.Sentinel1MetadataInspector;
@@ -161,6 +162,29 @@ public class ProductDownloadListener implements ProductStatusListener {
                     persistenceManager.save(dbProduct);
                 }
                 logger.info(String.format("Download completed [%s]", product.getName()));
+                // For Sentinel-2 L2A products, we need to "transfer" them into db product table
+                if (Constants.S2L2A_PRODUCT_TYPE.equals(product.getAttributeValue(CommonParameterNames.PRODUCT_TYPE))) {
+                    HighLevelProduct l2aProduct = new HighLevelProduct();
+                    l2aProduct.setArchived(false);
+                    l2aProduct.setCreated(dbProduct.getProductDate());
+                    l2aProduct.setDownloadProductId(dbProduct.getId());
+                    l2aProduct.setFootprint(dbProduct.getFootprint());
+                    l2aProduct.setFullPath(dbProduct.getFullPath());
+                    l2aProduct.setInserted(LocalDateTime.now());
+                    l2aProduct.setOrbitType(dbProduct.getOrbitType());
+                    l2aProduct.setProcessorId(Processor.L2A.value());
+                    l2aProduct.setProductName(dbProduct.getProductName());
+                    l2aProduct.setProductType(ProductType.L2A.value());
+                    l2aProduct.setQuickLookPath(product.getQuicklookLocation());
+                    l2aProduct.setRelativeOrbit(dbProduct.getOrbitId());
+                    l2aProduct.setSatellite(dbProduct.getSatelliteId());
+                    l2aProduct.setSiteId(dbProduct.getSiteId());
+                    l2aProduct.setTiles(dbProduct.getTiles());
+                    persistenceManager.save(l2aProduct);
+                    dbProduct.setStatusId(Status.PROCESSED);
+                    persistenceManager.save(dbProduct);
+                    logger.info(String.format("L2A product [%s] marked as processed", product.getName()));
+                }
             } else {
                 logger.warning(String.format("Received download completed event for product %s, but it was not found in the database",
                                              product.getName()));

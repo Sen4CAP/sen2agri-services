@@ -18,4 +18,6 @@ package org.esa.sen2agri.commons;
 
 public class Constants {
     public static final String FULL_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    public static final String S2L1C_PRODUCT_TYPE = "S2MSI1C";
+    public static final String S2L2A_PRODUCT_TYPE = "S2MSI2A";
 }

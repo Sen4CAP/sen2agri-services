@@ -273,14 +273,16 @@ public class PersistenceManager {
     }
 
     public List<DownloadProduct> getProducts(int siteId, int satelliteId, Status... statuses) {
-        DownloadProductRepository repository = getDownloadProductRepository();
-        return repository.findByStatus(siteId, satelliteId, statuses);
+        return getDownloadProductRepository().findByStatus(siteId, satelliteId, statuses);
+    }
+
+    public List<DownloadProduct> getProducts(int siteId, int satelliteId, Status status, String reasonFilter) {
+        return getDownloadProductRepository().findByStatusAndReason(siteId, satelliteId, status, reasonFilter);
     }
 
     public List<DownloadProduct> getDownloadedProducts(int siteId, Satellite satellite) {
-        DownloadProductRepository repository = getDownloadProductRepository();
-        return repository.findByStatus(siteId, satellite.value(),
-                                       Status.DOWNLOADED, Status.PROCESSING, Status.PROCESSING_FAILED, Status.PROCESSED);
+        return getDownloadProductRepository().findByStatus(siteId, satellite.value(),
+                                                           Status.DOWNLOADED, Status.PROCESSING, Status.PROCESSING_FAILED, Status.PROCESSED);
     }
 
     public List<DownloadProduct> getDownloadedProducts(int siteId, Satellite satellite, LocalDate olderThan, boolean latestFirst) {
